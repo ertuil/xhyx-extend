@@ -346,7 +346,7 @@ def main():
     read_xhyx_sogou("dict/xhyx-sogou.txt")
     ## 读取汉语常用词表
     read_extend("dict/extend-word.txt")
-    read_clover("dict/clover.phrase.dict.yaml", 45596467, 300000)
+    read_clover("dict/clover.phrase.dict.yaml", 45596467, 200000)
     read_clover("dict/THUOCL_IT.dict.yaml", 395499, 1000)
     read_clover("dict/THUOCL_caijing.dict.yaml", 1934814, 200)
     read_clover("dict/sogou_network.dict.yaml", 2, 0)
