@@ -19,7 +19,13 @@ output_word_dict: Dict[str, List[Tuple[str, int]]] = {}
 
 def read_xhyx_sogou(filename: str = "xhyx-sogou.txt"):
     """读取小鹤搜狗输入法词库文件，生成词典"""
-    replace_dict = {"h,1=和": "h,1=好", "h,2=化": "h,2=和"}
+    replace_dict = {
+        "h,1=和": "h,1=好",
+        "h,2=化": "h,2=和",
+        "ya,1=亚": "ya,1=呀",
+        "eh,1=鹤": "eh,1=嗯哼",
+        "he,1=何": "he,1=和",
+    }
     with open(filename, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -71,7 +77,11 @@ def read_extend(filename: str = "extend-word.txt"):
             extend_word_dict[w] = freq
 
 
-def read_clover(filename: str = "clover.phrase.dict.yaml", max_freq: int = 45596467, min_freq: int = 100000):
+def read_clover(
+    filename: str = "clover.phrase.dict.yaml",
+    max_freq: int = 45596467,
+    min_freq: int = 100000,
+):
     """读取扩展词库文件，生成词典"""
     with open(filename, "r", encoding="utf-8") as f:
         for line in f:
@@ -269,9 +279,6 @@ def extend_word(word: str, symbol: str, idx: int, freq: int):
                 idx = len(output_symbol_dict[s]) + 1
                 output_symbol_dict[s].append((word, idx))
             output_word_dict[word].append((s, idx))
-
-            if idx == 1:
-                break
             logging.debug(f"extend word: {word} symbol: {s} idx: {idx}")
 
         if not skip:
@@ -283,8 +290,6 @@ def extend_word(word: str, symbol: str, idx: int, freq: int):
                     idx = len(output_symbol_dict[s]) + 1
                     output_symbol_dict[s].append((word, idx))
                 output_word_dict[word].append((s, idx))
-                if idx == 1:
-                    break
                 logging.debug(f"extend word: {word} symbol: {s} idx: {idx}")
     # print(word, symbol, idx)
 
@@ -307,8 +312,8 @@ def format_and_output(output_dir: str = ""):
             final_output_symbol_list.append((symbol, w, idx))
 
     logging.info(f"Output symbol list: total {len(final_output_symbol_list)} lines")
-    output_sogou(final_output_symbol_list, output_dir+"/output_flypy_sogou.txt")
-    output_baidu(final_output_symbol_list, output_dir+"/output_flypy_baidu.ini")
+    output_sogou(final_output_symbol_list, output_dir + "/output_flypy_sogou.txt")
+    output_baidu(final_output_symbol_list, output_dir + "/output_flypy_baidu.ini")
 
 
 def output_sogou(
