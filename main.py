@@ -269,6 +269,9 @@ def extend_word(word: str, symbol: str, idx: int, freq: int):
                 idx = len(output_symbol_dict[s]) + 1
                 output_symbol_dict[s].append((word, idx))
             output_word_dict[word].append((s, idx))
+
+            if idx == 1:
+                break
             logging.debug(f"extend word: {word} symbol: {s} idx: {idx}")
 
         if not skip:
@@ -280,6 +283,8 @@ def extend_word(word: str, symbol: str, idx: int, freq: int):
                     idx = len(output_symbol_dict[s]) + 1
                     output_symbol_dict[s].append((word, idx))
                 output_word_dict[word].append((s, idx))
+                if idx == 1:
+                    break
                 logging.debug(f"extend word: {word} symbol: {s} idx: {idx}")
     # print(word, symbol, idx)
 
@@ -342,8 +347,9 @@ def main():
     ## 读取汉语常用词表
     read_extend("dict/extend-word.txt")
     read_clover("dict/clover.phrase.dict.yaml", 45596467, 300000)
-    read_clover("dict/THUOCL_IT.dict.yaml", 395499, 5000)
-    read_clover("dict/THUOCL_caijing.dict.yaml", 1934814, 1000)
+    read_clover("dict/THUOCL_IT.dict.yaml", 395499, 1000)
+    read_clover("dict/THUOCL_caijing.dict.yaml", 1934814, 200)
+    read_clover("dict/sogou_network.dict.yaml", 2, 0)
 
     ## Step 2：整理扩展的词汇表
     extend_list = parse_sg_list()
