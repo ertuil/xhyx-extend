@@ -32,6 +32,7 @@ def read_xhyx_sogou(filename: str = "xhyx-sogou.txt"):
         "eh,1=鹤": "eh,1=嗯哼",
         "he,1=何": "he,1=和",
         "ufm,1=椹": "ufm,1=什么",
+        "veg,1=鹧": "veg,1=这个"
     }
 
     with open(filename, "r", encoding="utf-8") as f:
@@ -66,7 +67,7 @@ def read_xhyx_sogou(filename: str = "xhyx-sogou.txt"):
                     single_word_dict[w] = s
 
 
-def read_extend(filename: str = "extend-word.txt"):
+def read_extend(filename: str = "extend-word.txt", max_word_len: int = 4):
     """读取扩展词库文件，生成词典"""
     count = 0
     with open(filename, "r", encoding="utf-8") as f:
@@ -82,6 +83,8 @@ def read_extend(filename: str = "extend-word.txt"):
             except:
                 continue
             if freq > MAX_EXTEND_FREQ:
+                continue
+            if len(w) > max_word_len:
                 continue
             extend_word_dict[w] = freq
             count += 1
@@ -310,7 +313,7 @@ def extend_word(word: str, symbol: str, idx: int, freq: int):
                 output_symbol_dict[s].append((word, idx))
             output_word_dict[word].append((s, idx))
             logging.debug(f"extend word: {word} symbol: {s} idx: {idx}")
-            if not mode_large and skip:
+            if skip:
                 break
 
         if not skip:
@@ -324,7 +327,7 @@ def extend_word(word: str, symbol: str, idx: int, freq: int):
                     output_symbol_dict[s].append((word, idx))
                 output_word_dict[word].append((s, idx))
                 logging.debug(f"extend word: {word} symbol: {s} idx: {idx}")
-                if not mode_large and skip:
+                if skip:
                     break
     # print(word, symbol, idx)
 
@@ -399,8 +402,8 @@ def main():
         read_clover("dict/personal.txt", 4, 0, max_word_len=200, add_cache=True)
 
     ## 读取汉语常用词表
-    read_extend("dict/extend-word.txt")
-    read_clover("dict/clover.phrase.dict.yaml", 45596467, 200000)
+    read_extend("dict/extend-word.txt", max_word_len=3)
+    read_clover("dict/clover.phrase.dict.yaml", 45596467 * 1.1, 200000)
     read_clover("dict/sogou_network.dict.yaml", 2, 0)
     if mode_large:
         min_freq = 1000
@@ -418,9 +421,9 @@ def main():
     )
     if mode_large:
         if os.path.exists("dict/zhwiki.simple.dict.yaml"):
-            read_clover("dict/zhwiki.simple.dict.yaml", 5, 0, max_word_len=2)
+            read_clover("dict/zhwiki.simple.dict.yaml", 10, 0, max_word_len=2)
         else:
-            read_clover("dict/zhwiki.dict.yaml", 5, 0, max_word_len=2)
+            read_clover("dict/zhwiki.dict.yaml", 10, 0, max_word_len=2)
 
     ## Step 2：整理扩展的词汇表
     extend_list = parse_sg_list()
