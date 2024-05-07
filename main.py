@@ -22,6 +22,7 @@ output_word_dict: Dict[str, List[Tuple[str, int]]] = {}
 
 xh_cache: dict[str, str] = {}
 
+
 def read_xhyx_sogou(filename: str = "xhyx-sogou.txt"):
     """读取小鹤搜狗输入法词库文件，生成词典"""
     replace_dict = {
@@ -128,7 +129,6 @@ def read_clover(
     logging.info(f"reading {count} words from {filename}")
 
 
-
 def read_single_word(filename: str = "flypy_n.json"):
     """读取单字词库文件，生成词典"""
 
@@ -167,12 +167,11 @@ def get_word_yx(word: str) -> str:
             p3 = single_word_dict[w3][0]
             p4 = single_word_dict[w4][0]
             return p1 + p2 + p3 + p4
-        raise ValueError(f"Invalid word length ({word})")
     except Exception as e:
         if word in xh_cache:
             return xh_cache[word]
-        else:
-            raise ValueError(f"Invalid xhyx ({word}): {e}")
+        raise ValueError(f"Invalid xhyx ({word}): {e}")
+    raise ValueError(f"Invalid word length ({word})")
 
 
 def parse_sg_list() -> List[Tuple[str, str, int, int]]:
@@ -219,7 +218,7 @@ def parse_extend_list(
     sg_extend_list: List[Tuple[str, str, int, int]]
 ) -> List[Tuple[str, str, int, int]]:
     """解析扩展词库"""
-    t = tqdm.tqdm(extend_word_dict.items(), desc="Parse extend list",mininterval=3)
+    t = tqdm.tqdm(extend_word_dict.items(), desc="Parse extend list", mininterval=3)
     for w, freq in t:
         t.desc = f"Parse extend list {w}"
         if w in output_word_dict:
@@ -288,8 +287,8 @@ def extend_word(word: str, symbol: str, idx: int, freq: int):
         ### 第二轮，引入词语的辅助码
         if len(word) > 2:
             return
-        w1 = word[-1]
-        w2 = word[0]
+        w1 = word[0]
+        w2 = word[-1]
         candidate_s_1 = []
         candidate_s_2 = []
         try:
@@ -311,17 +310,22 @@ def extend_word(word: str, symbol: str, idx: int, freq: int):
                 output_symbol_dict[s].append((word, idx))
             output_word_dict[word].append((s, idx))
             logging.debug(f"extend word: {word} symbol: {s} idx: {idx}")
+            if not mode_large and skip:
+                break
 
         if not skip:
             for s in candidate_s_2:
                 if s not in output_symbol_dict:
                     idx = 1
                     output_symbol_dict[s] = [(word, idx)]
+                    skip = True
                 else:
                     idx = len(output_symbol_dict[s]) + 1
                     output_symbol_dict[s].append((word, idx))
                 output_word_dict[word].append((s, idx))
                 logging.debug(f"extend word: {word} symbol: {s} idx: {idx}")
+                if not mode_large and skip:
+                    break
     # print(word, symbol, idx)
 
 
@@ -343,8 +347,12 @@ def format_and_output(output_dir: str = "", suffix=""):
             final_output_symbol_list.append((symbol, w, idx))
 
     logging.info(f"Output symbol list: total {len(final_output_symbol_list)} lines")
-    output_sogou(final_output_symbol_list, f"{output_dir}/output_flypy_sogou{suffix}.txt")
-    output_baidu(final_output_symbol_list, f"{output_dir}/output_flypy_baidu{suffix}.ini")
+    output_sogou(
+        final_output_symbol_list, f"{output_dir}/output_flypy_sogou{suffix}.txt"
+    )
+    output_baidu(
+        final_output_symbol_list, f"{output_dir}/output_flypy_baidu{suffix}.ini"
+    )
 
 
 def output_sogou(
@@ -386,9 +394,9 @@ def main():
     read_clover("dict/flypy_sys.txt", 5, -1, max_word_len=4, add_cache=True)
 
     if os.path.exists("dict/personal.costum.txt"):
-        read_clover("dict/personal.costum.txt", 4, 0,max_word_len=200, add_cache=True)
+        read_clover("dict/personal.costum.txt", 4, 0, max_word_len=200, add_cache=True)
     else:
-        read_clover("dict/personal.txt", 4, 0,max_word_len=200, add_cache=True)
+        read_clover("dict/personal.txt", 4, 0, max_word_len=200, add_cache=True)
 
     ## 读取汉语常用词表
     read_extend("dict/extend-word.txt")
@@ -398,16 +406,21 @@ def main():
         min_freq = 1000
         max_word_len = 4
     else:
-        min_freq = 2000
-        max_word_len = 2
+        min_freq = 1000
+        max_word_len = 3
     read_clover("dict/THUOCL_IT.dict.yaml", 395499, min_freq, max_word_len)
     read_clover("dict/THUOCL_caijing.dict.yaml", 1934814, min_freq, max_word_len)
     read_clover("dict/THUOCL_diming.dict.yaml", 1119506, min_freq, max_word_len)
     read_clover("dict/THUOCL_law.dict.yaml", 13204281, min_freq, max_word_len)
     read_clover("dict/THUOCL_medical.dict.yaml", 606946, min_freq, max_word_len)
-    read_clover("dict/ACS8384_myrime_custom.txt", 5, -1, max_word_len=20, add_cache=True)
+    read_clover(
+        "dict/ACS8384_myrime_custom.txt", 5, -1, max_word_len=20, add_cache=True
+    )
     if mode_large:
-        read_clover("dict/zhwiki.dict.yaml", 5, 0, max_word_len=2)
+        if os.path.exists("dict/zhwiki.simple.dict.yaml"):
+            read_clover("dict/zhwiki.simple.dict.yaml", 5, 0, max_word_len=2)
+        else:
+            read_clover("dict/zhwiki.dict.yaml", 5, 0, max_word_len=2)
 
     ## Step 2：整理扩展的词汇表
     extend_list = parse_sg_list()
