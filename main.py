@@ -4,6 +4,8 @@ import sys
 from typing import Dict, List, Tuple
 import json
 import tqdm
+from pyshuangpin import shuangpin, Scheme
+import pypinyin
 
 MAX_EXTEND_FREQ = 40000
 CLOVER_MIN_FREQ = 80000
@@ -26,17 +28,35 @@ xh_cache: dict[str, str] = {}
 def read_xhyx_sogou(filename: str = "xhyx-sogou.txt"):
     """读取小鹤搜狗输入法词库文件，生成词典"""
     replace_dict = {
+        "aa,1=阿": "aa,1=啊",
         "h,1=和": "h,1=好",
         "h,2=化": "h,2=和",
         "ya,1=亚": "ya,1=呀",
         "eh,1=鹤": "eh,1=嗯哼",
         "he,1=何": "he,1=和",
         "ufm,1=椹": "ufm,1=什么",
-        "veg,1=鹧": "veg,1=这个"
+        "veg,1=鹧": "veg,1=这个",
+        "ni,1=泥": "ni,1=你",
+        "nid,1=溺": "nid,1=泥",
+        "mw,1=每": "mw,1=没",
+        "mw,2=美": "mw,2=每",
+        "bu,1=部": "bu,1=不",
+        "ba,1=把": "ba,1=吧",
+        "baf,1=拔": "baf,1=把",
+        "bule,1=不说了": "bule,1=部",
+        "wo,1=握": "wo,1=我",
+        "wof,1=挝": "wof,1=握",
     }
 
+    add_dict = ["bafy,1=拔", "momo,1=摸摸", "jiyu,1=计", "viuo,1=智", "bmlu,1=辨", "bmlu,2=辫",
+                "djyr,1=单元", "hvyi,1=回忆", "jmjp,1=简洁", "jkli,1=精力", "jiyu,1=基于",
+                "jpvi,1=截至", "juli,1=距离", "jiyi,1=记忆", "uuli,1=梳理", "uiui,1=事实",
+                "veli,1=哲理", "vidk,1=置顶", "viui,1=指示", "vihv,1=指挥", "xlxl,2=想想",
+                "ybxk,1=音形", "jtde,1=觉得", "keyi,2=刻意"]
+
     with open(filename, "r", encoding="utf-8") as f:
-        for line in f:
+        lines = f.readlines() + add_dict
+        for line in lines:
             line = line.strip()
             if not line:
                 continue
@@ -145,31 +165,50 @@ def read_single_word(filename: str = "flypy_n.json"):
         if len(s) > 4:
             s = s[:4]
         single_word_dict[w] = s
+
+        if w in sg_word_dict:
+            sg_word_dict[w].append((s, len(sg_word_dict[w])))
+        else:
+            sg_word_dict[w] = [(s, 1)]
     logging.info("Read single word dict: total %d words", len(single_word_dict))
 
 
 def get_word_yx(word: str) -> str:
+
     try:
+        py = shuangpin(word, Scheme.小鹤, style=pypinyin.NORMAL)
         if len(word) == 1:
             return single_word_dict[word]
         if len(word) == 2:
             w1, w2 = word[0], word[1]
-            p1 = single_word_dict[w1][:2]
-            p2 = single_word_dict[w2][:2]
-            return p1 + p2
+            try:
+                ret = py[0][0] + py[1][0]
+            except:
+                p1 = single_word_dict[w1][:2]
+                p2 = single_word_dict[w2][:2]
+                ret = p1 + p2
+            return ret
         if len(word) == 3:
-            w1, w2, w3 = word[0], word[1], word[2]
-            p1 = single_word_dict[w1][0]
-            p2 = single_word_dict[w2][0]
-            p3 = single_word_dict[w3][:2]
-            return p1 + p2 + p3
+            try:
+                ret = py[0][0][0] + py[1][0][0] + py[2][0]
+            except:
+                w1, w2, w3 = word[0], word[1], word[2]
+                p1 = single_word_dict[w1][0]
+                p2 = single_word_dict[w2][0]
+                p3 = single_word_dict[w3][:2]
+                ret = p1 + p2 + p3
+            return ret
         if len(word) >= 4:
-            w1, w2, w3, w4 = word[0], word[1], word[2], word[-1]
-            p1 = single_word_dict[w1][0]
-            p2 = single_word_dict[w2][0]
-            p3 = single_word_dict[w3][0]
-            p4 = single_word_dict[w4][0]
-            return p1 + p2 + p3 + p4
+            try:
+                ret = py[0][0][0] + py[1][0][0] + py[2][0][0] + py[3][0][0]
+            except:
+                w1, w2, w3, w4 = word[0], word[1], word[2], word[-1]
+                p1 = single_word_dict[w1][0]
+                p2 = single_word_dict[w2][0]
+                p3 = single_word_dict[w3][0]
+                p4 = single_word_dict[w4][0]
+                ret = p1 + p2 + p3 + p4
+            return ret
     except Exception as e:
         if word in xh_cache:
             return xh_cache[word]
@@ -180,17 +219,19 @@ def get_word_yx(word: str) -> str:
 def parse_sg_list() -> List[Tuple[str, str, int, int]]:
     """解析单字词库"""
     sg_extend_list: List[Tuple[str, str, int, int]] = []
-
+    count = 0
     for w, symbol_list in sg_word_dict.items():
         for s, i in symbol_list:
             if (
                 len(w) == 1
-                or i == 1
+                # or i == 1
                 or s[0] == "o"
                 or "$" in w
                 or "#" in w
                 or len(s) != 4
             ):
+                if len(w) == 1 and len(s) == 3:
+                    continue
                 ### 1. 单字词
                 ### 2. 词频为1
                 ### 3. 以'o'开头（符号、表情等）
@@ -207,13 +248,14 @@ def parse_sg_list() -> List[Tuple[str, str, int, int]]:
                     output_symbol_dict[s].sort(key=lambda x: x[1])
                 else:
                     output_symbol_dict[s] = [(w, i)]
+                count += 1
             else:
                 if w in extend_word_dict:
                     freq = extend_word_dict[w]
                 else:
                     freq = DEFAULT_FREQ
                 sg_extend_list.append((w, s, i, freq))
-
+    logging.info("Parse basic single word dict: total %d words", count)
     return sg_extend_list
 
 
@@ -221,26 +263,36 @@ def parse_extend_list(
     sg_extend_list: List[Tuple[str, str, int, int]]
 ) -> List[Tuple[str, str, int, int]]:
     """解析扩展词库"""
-    t = tqdm.tqdm(extend_word_dict.items(), desc="Parse extend list", mininterval=3)
+    print(len(extend_word_dict), len(extend_word_dict.items()), len(extend_word_dict.keys()))
+    extend_word_dic_items = list(extend_word_dict.items())
+    t = tqdm.tqdm(
+        extend_word_dic_items,
+        desc="Parse extend list",
+        mininterval=1,
+        total=len(extend_word_dic_items),
+    )
+    sg_set = set([w for w, _, _, _ in sg_extend_list])
     for w, freq in t:
         t.desc = f"Parse extend list {w}"
+        t.update(1)
         if w in output_word_dict:
-            continue
+            skip = False
+            for s, _ in output_word_dict[w]:
+                if len(s) == 4:
+                    skip = True
+                    break
+            if skip:
+                continue
         # if len(w) > 4:
         #     continue
-        new = True
-        for cw, _, _, _ in sg_extend_list:
-            if w == cw:
-                new = False
-                break
-        if new:
+
+        if w not in sg_set:
             try:
                 s = get_word_yx(w)
             except Exception as e:
                 logging.warning(f"Invalid xhyx: {w} {e}")
                 continue
             sg_extend_list.append((w, s, 1000, freq))
-        t.update(1)
     # 根据权重排序
     sg_extend_list.sort(key=lambda x: x[3])
     return sg_extend_list
@@ -268,41 +320,48 @@ def extend_single_char():
 def extend_word(word: str, symbol: str, idx: int, freq: int):
     """解析双字词库"""
     if word in output_word_dict:
-        logging.debug(f"Word already exists: {word}")
-        return
+        skip = False
+        for s, _ in output_word_dict[word]:
+            if len(s) == 4:
+                skip = True
+                break
+        if skip:
+            logging.debug(f"Word already exists: {word}")
+            return
 
+    skip = False
     if symbol not in output_symbol_dict:
         idx = 1
         output_symbol_dict[symbol] = [(word, idx)]
         output_word_dict[word] = [(symbol, idx)]
         logging.debug(f"extend word: {word} symbol: {symbol} idx: {idx}")
+        skip = True
     else:
         ### 第一轮，补充非首位词录入办法
         idx = len(output_symbol_dict[symbol]) + 1
-        if idx == 1:
-            logging.warning(
-                f"234234 {symbol} {word} {idx} {output_symbol_dict[symbol]}"
-            )
         output_symbol_dict[symbol].append((word, idx))
         output_word_dict[word] = [(symbol, idx)]
         logging.debug(f"extend word: {word} symbol: {symbol} idx: {idx}")
 
+    if not skip:
+        skip = False
         ### 第二轮，引入词语的辅助码
-        if len(word) > 2:
+        if len(word) > 2 or len(symbol) != 4:
             return
         w1 = word[0]
         w2 = word[-1]
+
         candidate_s_1 = []
         candidate_s_2 = []
         try:
             candidate_s_1.append(symbol + single_word_dict[w1][2])
-            candidate_s_1.append(symbol + single_word_dict[w2][2])
-            candidate_s_2.append(symbol + single_word_dict[w1][2:4])
-            candidate_s_2.append(symbol + single_word_dict[w2][2:4])
+            candidate_s_1.append(
+                symbol + single_word_dict[w1][2] + single_word_dict[w2][2]
+            )
+            candidate_s_2.append(symbol[:2] + single_word_dict[w1][2] + symbol[2:4])
         except Exception as e:
             logging.warning(f"Invalid xhyx: {word} {e}")
 
-        skip = False
         for s in candidate_s_1:
             if s not in output_symbol_dict:
                 skip = True
@@ -313,10 +372,10 @@ def extend_word(word: str, symbol: str, idx: int, freq: int):
                 output_symbol_dict[s].append((word, idx))
             output_word_dict[word].append((s, idx))
             logging.debug(f"extend word: {word} symbol: {s} idx: {idx}")
-            if skip:
+            if not mode_large and skip:
                 break
 
-        if not skip:
+        if mode_large:
             for s in candidate_s_2:
                 if s not in output_symbol_dict:
                     idx = 1
@@ -342,8 +401,14 @@ def format_and_output(output_dir: str = "", suffix=""):
     for symbol in symbols:
         word_list = output_symbol_dict[symbol]
         word_list.sort(key=lambda x: x[1])
-
-        new_word_list = [(w, new_idx + 1) for new_idx, (w, idx) in enumerate(word_list)]
+        exist_keys = set()
+        new_word_list = []
+        for new_idx, (w, idx) in enumerate(word_list):
+            key = f"{w}-{symbol}"
+            if key in exist_keys:
+                continue
+            exist_keys.add(key)
+            new_word_list.append((w, new_idx + 1))
         final_output_symbol_dict[symbol] = new_word_list
 
         for w, idx in new_word_list:
@@ -403,7 +468,7 @@ def main():
 
     ## 读取汉语常用词表
     read_extend("dict/extend-word.txt", max_word_len=3)
-    read_clover("dict/clover.phrase.dict.yaml", 45596467 * 1.1, 200000)
+    read_clover("dict/clover.phrase.dict.yaml", 45596467 * 1.1, 100000)
     read_clover("dict/sogou_network.dict.yaml", 2, 0)
     if mode_large:
         min_freq = 1000
@@ -420,21 +485,21 @@ def main():
         "dict/ACS8384_myrime_custom.txt", 5, -1, max_word_len=20, add_cache=True
     )
     if mode_large:
+        # read_clover("dict/base.dict.yml", 5744085, 10000, max_word_len=3)
         if os.path.exists("dict/zhwiki.simple.dict.yaml"):
             read_clover("dict/zhwiki.simple.dict.yaml", 10, 0, max_word_len=2)
         else:
             read_clover("dict/zhwiki.dict.yaml", 10, 0, max_word_len=2)
 
-    ## Step 2：整理扩展的词汇表
+    ## Step 2：整理扩展的词汇表 and Step 3：补充不常见的字
     extend_list = parse_sg_list()
+    extend_single_char()
     extend_list = parse_extend_list(extend_list)
 
-    ## Step 3：补充不常见的字
-    extend_single_char()
 
     ## Step 4：对非首位的词进行补充处理
     logging.info(f"Extend list: {len(extend_list)}")
-    t = tqdm.tqdm(extend_list, desc="Extend words")
+    t = tqdm.tqdm(extend_list, desc="Extend words", total=len(extend_list))
     for w, s, i, freq in t:
         t.desc = f"Extend words {w}"
         extend_word(w, s, i, freq)
