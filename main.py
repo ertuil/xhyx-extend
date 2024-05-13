@@ -171,9 +171,10 @@ def read_clover(
                 continue
             count += 1
             tmp_extend_word_dict.append((w, freq))
+            if add_cache:
+                xh_cache[w] = symbol
 
         tmp_extend_word_dict.sort(key=lambda x: x[1], reverse=True)
-
         for idx, (w, freq) in enumerate(tmp_extend_word_dict):
             if freq == 1 or freq == 0:
                 new_idx = len(tmp_extend_word_dict) / 2
@@ -183,8 +184,6 @@ def read_clover(
                 (new_idx / len(tmp_extend_word_dict)) * 56000 * periority
             )
 
-            if add_cache:
-                xh_cache[w] = symbol
     logging.info(f"reading {count} words from {filename}")
 
 
