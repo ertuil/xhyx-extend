@@ -18,6 +18,7 @@ sg_symbol_dict: Dict[str, List[Tuple[str, int]]] = {}
 extend_word_dict: Dict[str, int] = {}
 
 single_word_dict: Dict[str, str] = {}
+rare_single_word_list: List[str] = []
 
 output_symbol_dict: Dict[str, List[Tuple[str, int]]] = {}
 output_word_dict: Dict[str, List[Tuple[str, int]]] = {}
@@ -48,11 +49,32 @@ def read_xhyx_sogou(filename: str = "xhyx-sogou.txt"):
         "wof,1=挝": "wof,1=握",
     }
 
-    add_dict = ["bafy,1=拔", "momo,1=摸摸", "jiyu,1=计", "viuo,1=智", "bmlu,1=辨", "bmlu,2=辫",
-                "djyr,1=单元", "hvyi,1=回忆", "jmjp,1=简洁", "jkli,1=精力", "jiyu,1=基于",
-                "jpvi,1=截至", "juli,1=距离", "jiyi,1=记忆", "uuli,1=梳理", "uiui,1=事实",
-                "veli,1=哲理", "vidk,1=置顶", "viui,1=指示", "vihv,1=指挥", "xlxl,2=想想",
-                "ybxk,1=音形", "jtde,1=觉得", "keyi,2=刻意"]
+    add_dict = [
+        "bafy,1=拔",
+        "momo,1=摸摸",
+        "jiyu,1=计",
+        "viuo,1=智",
+        "bmlu,1=辨",
+        "bmlu,2=辫",
+        "djyr,1=单元",
+        "hvyi,1=回忆",
+        "jmjp,1=简洁",
+        "jkli,1=精力",
+        "jiyu,1=基于",
+        "jpvi,1=截至",
+        "juli,1=距离",
+        "jiyi,1=记忆",
+        "uuli,1=梳理",
+        "uiui,1=事实",
+        "veli,1=哲理",
+        "vidk,1=置顶",
+        "viui,1=指示",
+        "vihv,1=指挥",
+        "xlxl,2=想想",
+        "ybxk,1=音形",
+        "jtde,1=觉得",
+        "keyi,2=刻意",
+    ]
 
     with open(filename, "r", encoding="utf-8") as f:
         lines = f.readlines() + add_dict
@@ -113,13 +135,15 @@ def read_extend(filename: str = "extend-word.txt", max_word_len: int = 4):
 
 def read_clover(
     filename: str = "clover.phrase.dict.yaml",
-    max_freq: int = 45596467,
+    periority: int = 45596467,
     min_freq: int = 100000,
     max_word_len: int = 4,
     add_cache: bool = False,
 ):
     """读取扩展词库文件，生成词典"""
     count = 0
+    tmp_extend_word_dict: List[Tuple[str, float]] = []
+
     with open(filename, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -142,10 +166,21 @@ def read_clover(
                 continue
             if freq < min_freq:
                 continue
-            if w in extend_word_dict:
+            if w in extend_word_dict or w in sg_word_dict:
                 continue
             count += 1
-            extend_word_dict[w] = (1 - freq / max_freq) * 56000
+            tmp_extend_word_dict.append((w, freq))
+
+        tmp_extend_word_dict.sort(key=lambda x: x[1], reverse=True)
+
+        for idx, (w, freq) in enumerate(tmp_extend_word_dict):
+            if freq == 1 or freq == 0:
+                new_idx = len(tmp_extend_word_dict) / 2
+            else:
+                new_idx = idx
+            extend_word_dict[w] = (
+                (new_idx / len(tmp_extend_word_dict)) * 56000 * periority
+            )
 
             if add_cache:
                 xh_cache[w] = symbol
@@ -162,14 +197,18 @@ def read_single_word(filename: str = "flypy_n.json"):
         w: str = elem["character"]
         s_list: str = elem["fly_code"]
         s = s_list.split()[0]
+
+        if "*" in s:
+            rare_single_word_list.append(w)
         if len(s) > 4:
             s = s[:4]
         single_word_dict[w] = s
 
-        if w in sg_word_dict:
-            sg_word_dict[w].append((s, len(sg_word_dict[w])))
-        else:
-            sg_word_dict[w] = [(s, 1)]
+        if w not in rare_single_word_list:
+            if w in sg_word_dict:
+                sg_word_dict[w].append((s, len(sg_word_dict[w])))
+            else:
+                sg_word_dict[w] = [(s, 1)]
     logging.info("Read single word dict: total %d words", len(single_word_dict))
 
 
@@ -230,8 +269,8 @@ def parse_sg_list() -> List[Tuple[str, str, int, int]]:
                 or "#" in w
                 or len(s) != 4
             ):
-                if len(w) == 1 and len(s) == 3:
-                    continue
+                # if len(w) == 1 and len(s) == 3:
+                #     continue
                 ### 1. 单字词
                 ### 2. 词频为1
                 ### 3. 以'o'开头（符号、表情等）
@@ -263,7 +302,6 @@ def parse_extend_list(
     sg_extend_list: List[Tuple[str, str, int, int]]
 ) -> List[Tuple[str, str, int, int]]:
     """解析扩展词库"""
-    print(len(extend_word_dict), len(extend_word_dict.items()), len(extend_word_dict.keys()))
     extend_word_dic_items = list(extend_word_dict.items())
     t = tqdm.tqdm(
         extend_word_dic_items,
@@ -308,10 +346,14 @@ def extend_single_char():
         count += 1
         if s not in output_symbol_dict:
             idx = 1
+            if w in rare_single_word_list:
+                idx = 1000
             output_symbol_dict[s] = [(w, idx)]
             output_word_dict[w] = [(s, idx)]
         else:
             idx = len(output_symbol_dict[s]) + 1
+            if w in rare_single_word_list:
+                idx = 1000
             output_symbol_dict[s].append((w, idx))
             output_word_dict[w] = [(s, idx)]
     logging.info(f"Extend single word total number: {count}")
@@ -388,7 +430,6 @@ def extend_word(word: str, symbol: str, idx: int, freq: int):
                 logging.debug(f"extend word: {word} symbol: {s} idx: {idx}")
                 if skip:
                     break
-    # print(word, symbol, idx)
 
 
 def format_and_output(output_dir: str = "", suffix=""):
@@ -459,43 +500,42 @@ def main():
     read_single_word("dict/flypy_n.json")
     ## 读取官方搜狗词典
     read_xhyx_sogou("dict/xhyx-sogou.txt")
-    read_clover("dict/flypy_sys.txt", 5, -1, max_word_len=4, add_cache=True)
+    read_clover("dict/flypy_sys.txt", 1, -1, max_word_len=4, add_cache=True)
 
     if os.path.exists("dict/personal.costum.txt"):
-        read_clover("dict/personal.costum.txt", 4, 0, max_word_len=200, add_cache=True)
+        read_clover("dict/personal.costum.txt", 1, 0, max_word_len=200, add_cache=True)
     else:
-        read_clover("dict/personal.txt", 4, 0, max_word_len=200, add_cache=True)
+        read_clover("dict/personal.txt", 1, 0, max_word_len=200, add_cache=True)
 
     ## 读取汉语常用词表
+    read_clover("dict/clover.phrase.dict.yaml", 1, 200000)
+    read_clover("dict/sogou_network.dict.yaml", 1, 0)
     read_extend("dict/extend-word.txt", max_word_len=3)
-    read_clover("dict/clover.phrase.dict.yaml", 45596467 * 1.1, 100000)
-    read_clover("dict/sogou_network.dict.yaml", 2, 0)
     if mode_large:
         min_freq = 1000
         max_word_len = 4
     else:
         min_freq = 1000
         max_word_len = 3
-    read_clover("dict/THUOCL_IT.dict.yaml", 395499, min_freq, max_word_len)
-    read_clover("dict/THUOCL_caijing.dict.yaml", 1934814, min_freq, max_word_len)
-    read_clover("dict/THUOCL_diming.dict.yaml", 1119506, min_freq, max_word_len)
-    read_clover("dict/THUOCL_law.dict.yaml", 13204281, min_freq, max_word_len)
-    read_clover("dict/THUOCL_medical.dict.yaml", 606946, min_freq, max_word_len)
+    read_clover("dict/THUOCL_IT.dict.yaml", 5, min_freq, max_word_len)
+    read_clover("dict/THUOCL_caijing.dict.yaml", 5, min_freq, max_word_len)
+    read_clover("dict/THUOCL_diming.dict.yaml", 5, min_freq, max_word_len)
+    read_clover("dict/THUOCL_law.dict.yaml", 5, min_freq, max_word_len)
+    read_clover("dict/THUOCL_medical.dict.yaml", 5, min_freq, max_word_len)
     read_clover(
         "dict/ACS8384_myrime_custom.txt", 5, -1, max_word_len=20, add_cache=True
     )
     if mode_large:
         # read_clover("dict/base.dict.yml", 5744085, 10000, max_word_len=3)
         if os.path.exists("dict/zhwiki.simple.dict.yaml"):
-            read_clover("dict/zhwiki.simple.dict.yaml", 10, 0, max_word_len=2)
+            read_clover("dict/zhwiki.simple.dict.yaml", 15, 0, max_word_len=2)
         else:
-            read_clover("dict/zhwiki.dict.yaml", 10, 0, max_word_len=2)
+            read_clover("dict/zhwiki.dict.yaml", 15, 0, max_word_len=2)
 
     ## Step 2：整理扩展的词汇表 and Step 3：补充不常见的字
     extend_list = parse_sg_list()
     extend_single_char()
     extend_list = parse_extend_list(extend_list)
-
 
     ## Step 4：对非首位的词进行补充处理
     logging.info(f"Extend list: {len(extend_list)}")
