@@ -56,6 +56,7 @@ def read_xhyx_sogou(filename: str = "xhyx-sogou.txt"):
         "viuo,1=智",
         "bmlu,1=辨",
         "bmlu,2=辫",
+        "tofu,1=拓",
         "djyr,1=单元",
         "hvyi,1=回忆",
         "jmjp,1=简洁",
@@ -528,9 +529,9 @@ def main():
     if mode_large:
         # read_clover("dict/base.dict.yml", 5744085, 10000, max_word_len=3)
         if os.path.exists("dict/zhwiki.simple.dict.yaml"):
-            read_clover("dict/zhwiki.simple.dict.yaml", 15, 0, max_word_len=2)
+            read_clover("dict/zhwiki.simple.dict.yaml", 100, 0, max_word_len=2)
         else:
-            read_clover("dict/zhwiki.dict.yaml", 15, 0, max_word_len=2)
+            read_clover("dict/zhwiki.dict.yaml", 100, 0, max_word_len=2)
 
     ## Step 2：整理扩展的词汇表 and Step 3：补充不常见的字
     extend_list = parse_sg_list()

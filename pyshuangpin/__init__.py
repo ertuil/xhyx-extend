@@ -18,9 +18,11 @@ def shuangpin(hans, scheme: Scheme, **kwargs):
     else:
         raise NotImplementedError('scheme not implemented')
 
-    for key, value in scheme_dict.items():
-        for item in pinyin:
-            for index in range(len(item)):
+    for item in pinyin:
+        for index in range(len(item)):
+            for key, value in scheme_dict.items():
                 item[index] = item[index].replace(key, value)
+                if len(item[index]) <= 2:
+                    break
 
     return pinyin
