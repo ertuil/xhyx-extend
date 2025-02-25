@@ -1,0 +1,30 @@
+name: Build Release Gitea
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+
+  build2:
+    name: Build and Release Gitea
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.13' 
+    - run: pip install pypinyin tqdm
+    - run: python main.py
+    - run: python main.py -l
+
+    - name: Create Release
+      id: create_release_gitea
+      uses: akkuman/gitea-release-action@v1
+      env:
+        NODE_OPTIONS: '--experimental-fetch' # if nodejs < 18
+      with:
+        files: |-
+          output/**
+        token: ${{ secrets.TOKEN }}
