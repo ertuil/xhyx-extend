@@ -47,6 +47,7 @@ def read_xhyx_sogou(filename: str = "xhyx-sogou.txt"):
         "bule,1=不说了": "bule,1=部",
         "wo,1=握": "wo,1=我",
         "wof,1=挝": "wof,1=握",
+        "goig,1=蜾": "goig,1=过程",
     }
 
     add_dict = [
@@ -316,7 +317,7 @@ def parse_extend_list(
         if w in output_word_dict:
             skip = False
             for s, _ in output_word_dict[w]:
-                if len(s) == 4:
+                if len(s) >= 3:
                     skip = True
                     break
             if skip:
@@ -503,9 +504,9 @@ def main():
     read_clover("dict/flypy_sys.txt", 1, -1, max_word_len=4, add_cache=True)
 
     if os.path.exists("dict/personal.costum.txt"):
-        read_clover("dict/personal.costum.txt", 1, 0, max_word_len=200, add_cache=True)
+        read_clover("dict/personal.costum.txt", 0.001, 0, max_word_len=200, add_cache=True)
     else:
-        read_clover("dict/personal.txt", 1, 0, max_word_len=200, add_cache=True)
+        read_clover("dict/personal.txt", 0.001, 0, max_word_len=200, add_cache=True)
 
     ## 读取汉语常用词表
     read_clover("dict/clover.phrase.dict.yaml", 1, 200000)
